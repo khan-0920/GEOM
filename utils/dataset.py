@@ -6,6 +6,16 @@ import os
 from rdkit import Chem
 
 def rd_to_data():
+    """
+    data
+    x: [atom_types,...]
+    edge_index: [2, num_edges]
+    pos: [num_nodes, 3]
+    edge_attr: [num_edges, features]
+    y: boltzman distribution
+    
+    """
+    
     
     return NotImplementedError
 
