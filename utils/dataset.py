@@ -158,7 +158,27 @@ def rd_to_data(conf_id,data):
     
     return output
 
-
+def GeomDataset(Dataset):
+    def __init__(self, root, transform=None, pre_transform=None):
+        super(GeomDataset, self).__init__(root, transform, pre_transform)
+        self.data_lst = []
+        
+    def len(self):
+        return len(self.data_lst)
+    
+    def get(self,idx):
+        return self.data_lst[idx]
+    
+    def load(self,load_path):
+        loaded_dataset = torch.load(pt_path)
+        self.data_lst += loaded_dataset
+    
+    def save(self,out_path):
+        torch.save(self.data_lst,out_path)
+        
+    def add(self,rd_data,conf_id):
+        self.data_lst.append(rd_to_data(conf_id,rd_data))
+        
 if __name__ == "__main__":
 
     
