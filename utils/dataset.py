@@ -132,7 +132,9 @@ def rd_to_data(conf_id,data):
     """
     mol = data['conformers'][conf_id]['rd_mol']
     
-    x = torch.tensor([atom_featurizer.encode(atom) for atom in mol.GetAtoms()])
+    
+    
+    x = torch.tensor(np.array([atom_featurizer.encode(atom) for atom in mol.GetAtoms()]))
     
     pos = torch.tensor(mol.GetConformer().GetPositions())
     
@@ -158,9 +160,9 @@ def rd_to_data(conf_id,data):
     
     return output
 
-def GeomDataset(Dataset):
+class GeomDataset(Dataset):
     def __init__(self, root, transform=None, pre_transform=None):
-        super(GeomDataset, self).__init__(root, transform, pre_transform)
+        super(GeomDataset,self).__init__(root, transform, pre_transform)
         self.data_lst = []
         
     def len(self):
@@ -169,7 +171,7 @@ def GeomDataset(Dataset):
     def get(self,idx):
         return self.data_lst[idx]
     
-    def load(self,load_path):
+    def load(self,pt_path):
         loaded_dataset = torch.load(pt_path)
         self.data_lst += loaded_dataset
     
