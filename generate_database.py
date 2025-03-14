@@ -5,11 +5,11 @@ import os
 import json
 from torch_geometric.data import Dataset
 
-def generate_database():
+def generate_database(_dataset):
     
     dir_ = "/gpfs/share/home/1800011712/GEOM/data/rdkit_folder/"
     
-    with open(dir_+"summary_qm9.json","r") as f:
+    with open(dir_+f"summary_{_dataset}.json","r") as f:
         data_dict = json.load(f)
     
     counter = 0
@@ -25,7 +25,7 @@ def generate_database():
         
         else:
             try:
-                with open(os.path.join(dir_,"qm9",str(key+".pickle")),"rb") as f: data = pickle.load(f)
+                with open(os.path.join(dir_,f"{_dataset}",str(key+".pickle")),"rb") as f: data = pickle.load(f)
                 if len(data["conformers"]) > 2:
                     for i in range(len(data["conformers"])):
                         dataset.add(data,i)
@@ -33,7 +33,7 @@ def generate_database():
             except:
                 print(key)
                                     
-    dataset.save(f"tmp/{up_limit}_total_data_qm9.pt")
+    dataset.save(f"tmp/{up_limit}_total_data_{_dataset}_withdis.pt")
 
 def load_database():
     
@@ -43,4 +43,4 @@ def load_database():
   
 if __name__ == "__main__":
     
-    generate_database()
+    generate_database("drugs")

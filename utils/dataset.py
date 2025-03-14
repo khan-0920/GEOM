@@ -3,8 +3,10 @@ import os
 import torch
 import numpy as np
 from torch_geometric.data import Dataset, Data
+import math
 
 from rdkit import Chem
+from rdkit.Chem import rdmolops
 
 class Featurizer:
     def __init__(self, allowable_sets):
@@ -132,31 +134,51 @@ def rd_to_data(conf_id,data):
     """
     mol = data['conformers'][conf_id]['rd_mol']
     
+    dist_matrix = rdmolops.Get3DDistanceMatrix(mol)
     
+    x = torch.tensor(np.array([atom_featurizer.encode(atom) for atom in mol.GetAtoms()]),dtype=torch.float)
     
-    x = torch.tensor(np.array([atom_featurizer.encode(atom) for atom in mol.GetAtoms()]))
+    pos = torch.tensor(mol.GetConformer().GetPositions(),dtype=torch.float)
     
-    pos = torch.tensor(mol.GetConformer().GetPositions())
+    edge, edge_attr = [[],[]], []
     
-    edge, edge_attr = [], []
+    dis_index, dis = [[],[]], []
     
     for bond in mol.GetBonds():
         
         start, end = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
-        edge += [start,end]
-        edge += [end,start]
+        edge[0] += [start,end]
+        edge[1] += [end,start]
         edge_attr += [bond_featurizer.encode(bond)]
-        edge_attr += [bond_featurizer.encode(bond)]
+        edge_attr += [bond_featurizer.encode(bond)] 
     
-    edge_index = torch.tensor(edge,dtype=torch.long)
+    for i in range(mol.GetNumAtoms()):
+        for j in range(mol.GetNumAtoms()):
+            if i != j:
+                
+                dis_index[0] += [i]
+                dis_index[1] += [j]
+                
+                dis += [dist_matrix[i,j]]
     
-    y = data['conformers'][conf_id]['boltzmannweight']
+    
+    edge_index = torch.tensor(np.array(edge),dtype=torch.long)
+    edge_attr = torch.tensor(np.array(edge_attr),dtype=torch.float)
+    
+    dis_index = torch.tensor(np.array(dis_index),dtype=torch.long)
+    dis = torch.tensor(np.array(dis),dtype=torch.float)
+    
+    y = torch.tensor(math.log(data['conformers'][conf_id]['boltzmannweight'],10))
     
     output = Data(x=x, 
                   edge_index=edge_index, 
                   edge_attr=edge_attr, 
                   pos=pos, 
+                  y=y
                   )
+    
+    output.dis_index = dis_index
+    output.dis = dis
     
     return output
 
@@ -183,50 +205,5 @@ class GeomDataset(Dataset):
         
 if __name__ == "__main__":
 
-    
-    """
-    direc = "/gpfs/share/home/1800011712/GEOM/data/"
-    drugs_file = os.path.join(direc, "drugs_crude.msgpack")
-    feature_file = os.path.join(direc, "drugs_crude.msgpack")
-    unpacker = msgpack.Unpacker(open(drugs_file, "rb"))
-    
-    drugs_1k = next(iter(unpacker))
-    
-    sample_smiles = list(drugs_1k.keys())[10]
-    sample_sub_dic = drugs_1k[sample_smiles]
-
-    mol = Chem.MolFromSmiles(sample_smiles)
-    for atom in mol.GetAtoms():
-        i = atom.GetIdx()
-        print(i)
-        print(atom.GetSymbol())
-    
-    #print(Chem.MolToMolBlock(m))
-    print(sample_sub_dic["conformers"][1]["xyz"])
-    
-    #print({key: val for key, val in sample_sub_dic.items() if key != 'conformers'})
-    """
-    
-    file = ("/gpfs/share/home/1800011712/GEOM/data/rdkit_folder/drugs/BrC(_C=C\\c1ccccc1)=N_Nc1nc(N2CCOCC2)nc(N2CCOCC2)n1.pickle")
-    
-    with open(file,"rb") as f: data = pickle.load(f)
-    
-    print(data['conformers'][1]['rd_mol'])
-    mol = data['conformers'][1]['rd_mol']
-    print(data['conformers'][0]["boltzmannweight"])
-    conf = mol.GetConformer()
-    #print(conf.GetPositions())
-    row, col, edge_type = [], [], []
-    for bond in mol.GetBonds():
-        start, end = bond.GetBeginAtomIdx(), bond.GetEndAtomIdx()
-        row += [start, end]
-        col += [end, start]
-        edge_type += [bond.GetBondType()]
-    #print(row)
-    #print(edge_type)
-
-    
-    """
-    for atom in mol.GetAtoms():
-        print(atom.GetSymbol())
-    """
+    print("Non")
+   
