@@ -1,5 +1,5 @@
 import torch
-from torch_geometric.nn import GATConv
+from torch_geometric.nn import GATConv, GCN
 import torch.nn.functional as F
 from torch.nn import ReLU, Linear, Sequential, Dropout
 from torch_geometric.nn import global_mean_pool
@@ -44,7 +44,7 @@ class geomGAT(torch.nn.Module):
         return out
 
 class geomGAdisT(torch.nn.Module):
-    def __init__(self, in_channels, out_channels, hidden_dim, out_dim, edge_dim, layer_num=5, heads=8, dropout_rate=0.3):
+    def __init__(self, in_channels, out_channels, hidden_dim, out_dim, edge_dim, layer_num=10, heads=8, dropout_rate=0.3):
         super(geomGAdisT, self).__init__()
         
         self.dropout_rate = dropout_rate
@@ -53,6 +53,14 @@ class geomGAdisT(torch.nn.Module):
         self.conv2 = GATConv(8 * heads, out_channels, heads=1, dropout=self.dropout_rate)  # 输出只有一个头
         
         self.mlp = Sequential(
+            Linear(hidden_dim, hidden_dim),
+            ReLU(),
+            Linear(hidden_dim, hidden_dim),
+            ReLU(),
+            Linear(hidden_dim, hidden_dim),
+            ReLU(),
+            Linear(hidden_dim, hidden_dim),
+            ReLU(),
             Linear(hidden_dim, hidden_dim//2),
             ReLU(),
             Linear(hidden_dim//2, out_dim)
@@ -72,7 +80,7 @@ class geomGAdisT(torch.nn.Module):
         
         #device = torch.device("cuda:0")
         
-        x, edge_index, pos, batch, edge_attr, dis, dis_index = data.x, data.edge_index, data.pos, data.batch, data.edge_attr, data.dis, data.dis_index
+        x, edge_index, batch, edge_attr, dis, dis_index = data.x, data.edge_index, data.batch, data.edge_attr, data.dis, data.dis_index
              
         for i in range(self.layer_num):
             
@@ -89,6 +97,61 @@ class geomGAdisT(torch.nn.Module):
             x = x_tmp
             
             x = self.dropout(x)
+        
+        x = global_mean_pool(x, batch)
+        
+        out = self.mlp(x)
+        
+        return out
+
+class geomGCNAT(torch.nn.Module):
+    def __init__(self, in_channels, out_channels, hidden_dim, out_dim, edge_dim, layer_num=10, heads=8, dropout_rate=0.3):
+        super(geomGCNAT, self).__init__()
+        
+        self.dropout_rate = dropout_rate
+        self.layer_num = layer_num   
+        
+        self.conv1 = GATConv(in_channels, 8, heads=heads, dropout=self.dropout_rate)  # 8个头
+        self.conv2 = GATConv(8 * heads, out_channels, heads=1, dropout=self.dropout_rate)  # 输出只有一个头
+        
+        self.GCNv1 = GCN(in_channels,108,self.layer_num,out_channels, dropout=self.dropout_rate)
+        
+        self.mlp = Sequential(
+            Linear(hidden_dim, hidden_dim),
+            ReLU(),
+            Linear(hidden_dim, hidden_dim),
+            ReLU(),
+            Linear(hidden_dim, hidden_dim),
+            ReLU(),
+            Linear(hidden_dim, hidden_dim),
+            ReLU(),
+            Linear(hidden_dim, hidden_dim//2),
+            ReLU(),
+            Linear(hidden_dim//2, out_dim)
+        )
+        
+        self.dropout = Dropout(self.dropout_rate)
+        
+         
+    
+    def forward(self, data):
+        
+        #device = torch.device("cuda:0")
+        
+        x, edge_index, batch, edge_attr, dis, dis_index = data.x, data.edge_index, data.batch, data.edge_attr, data.dis, data.dis_index
+             
+        for i in range(self.layer_num):
+            
+            x_tmp = F.relu(self.conv1(x,dis_index,edge_attr=dis))
+            x_tmp = self.conv2(x_tmp,dis_index,edge_attr=dis)  
+            
+            x_gat = x_tmp
+    
+            x_gat = self.dropout(x)
+        
+        x_gcn = self.GCNv1(x,edge_index,edge_attr=edge_attr)
+        
+        x = torch.cat([x_gat,x_gcn],dim=1)
         
         x = global_mean_pool(x, batch)
         

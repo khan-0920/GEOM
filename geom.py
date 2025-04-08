@@ -1,6 +1,7 @@
 from utils.dataset import *
 from model.GAT import *
 from torch_geometric.data import DataLoader
+import sys
 
 
 def train(model, loader, optimizer, criterion, device):
@@ -34,6 +35,8 @@ def evaluate(model, loader, criterion, device):
     return total_loss / len(loader)
 
 def main():
+
+    sys.stdout.reconfigure(line_buffering=True)
     
     
     qm9_dataset = GeomDataset("../tmp")

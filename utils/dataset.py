@@ -202,8 +202,22 @@ class GeomDataset(Dataset):
         
     def add(self,rd_data,conf_id):
         self.data_lst.append(rd_to_data(conf_id,rd_data))
+    
+    def return_distribution(self):
+        
+        temp_lst = []
+        for data in self.data_lst:
+            temp_lst.append(data.y)
+        
+        return temp_lst
         
 if __name__ == "__main__":
 
-    print("Non")
+    drugs_dataset = GeomDataset("../tmp")
+    
+    drugs_dataset.load("/gpfs/share/home/1800011712/GEOM/tmp/100000_total_data_drugs_withdis.pt")
+    
+    lst = drugs_dataset.return_distribution()
+    
+    print(lst)
    
